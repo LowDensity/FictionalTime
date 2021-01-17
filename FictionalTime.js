@@ -6,27 +6,27 @@
 //     "second":{
 //         "volume" : 1000,
 //         "volume_type" : "accumulate",
-//         "unit_type": "AM" // AM = Absolute Minimum   
+//         "consist_of": "AM" // AM = Absolute Minimum   
 //     },
 //     "minute":{
 //         "volume" : 60,
 //         "volume_type" : "accumulate",
-//         "unit_type":"second"
+//         "consist_of":"second"
 //     },
 //     "hour":{
 //         "volume" :  60 ,
 //         "volume_type" : "accumulate",
-//         "unit_type":"minute",
+//         "consist_of":"minute",
 //     },
 //     "day":{
 //         "volume" :17,
 //         "volume_type" : "accumulate",
-//         "unit_type" :"hour"
+//         "consist_of" :"hour"
 //     },
 //     "year":{
 //         "volume" :553,
 //         "volume_type" : "periodically",
-//         "unit_type" :"day"
+//         "consist_of" :"day"
 //     }
 // }
 
@@ -52,23 +52,21 @@
              "unit_value" : unitVal
          }
     }
-    FictionalTime.getUnitAmVal=(unitName,unit_list)=>{
+    FictionalTime.getUnitAmVal=(unitName,unitMap)=>{
         //取得各單位的AM值用來做計算
-        var unitDef = unit_list[unitName];
-        var amVal = unitDef.volume;
-        var baseUnit = unit_list[unitDef.unit_type];
+        if(unitMap[unitName].consist_of==="AM"){return unitMap[unitName].unit_volume;}
+        var unitDef = unitMap[unitName];
+        var volume = unitDef.unit_volume;
+        var baseUnit = unitMap[unitDef.consist_of];
         var amBaseResolved=false;
-        console.log("aa");
         while(typeof(baseUnit)!="undefined"){
-            if(amBaseResolved){ console.log("not am");throw new Error("AM is not the only minimum unit of this Calendar.")}
-            amVal = amVal*baseUnit.volume;
-            amBaseResolved = baseUnit.unit_type==="AM";
-            baseUnit = unit_list[baseUnit.unit_type]; 
+            if(amBaseResolved){ throw new Error("AM is not the only minimum unit of this Calendar.")}
+            volume = volume * baseUnit.unit_volume;
+            amBaseResolved = baseUnit.consist_of==="AM";
+            baseUnit = unitMap[baseUnit.consist_of]; 
         }
-        console.log("bb");
         if(!amBaseResolved){throw new Error("Unable to resolve unit : " + unitName +" to AM(Absolute Minimum)");}
-        return amVal;
-        
+        return volume;       
     }
 
     FictionalTime.Calendars =new Object();//已知的所有曆法，不確定會不會用到
@@ -76,33 +74,37 @@
         //從script標籤的tag中取得曆法定義，主要用在啟動即載入的狀況
         calendar_source=JSON.parse(tag.innerText);
         if(typeof(calendar_source.calendar_name)=="undefined"
-         || calendar_source.calendar_name.trim()===""
+        || calendar_source.calendar_name.trim()===""
         ){throw new Error("A valid calendar Name is Required.");}
-
+        
         if(typeof(FictionalTime.Calendars.source[calendar_source.calendar_name])!="undefined")
         {
-            console.warn("Duplicate Calendar Name for "+calendar_source.calendar_name);
+            console.warn("Duplicate Calendar Name for "+calendar_source.calendar_name+".\n Definition Ignored.");
             return;
         }
-
+        
         //keep source for later restoration and checking
-        FictionalTime.Calendars.source[calendar_source.calendar_name]=calendar_source;
         var new_calendar= JSON.parse(tag.innerText);
+        new_calendar.unit_map=FictionalTime.createUnitMap(new_calendar.unit_list);
         //generating calendar unit_amval 
-        var errorUnits=new Array();
-
-        for(var i = 0 ; i< new_calendar.unit_list.length;i++){
-            try{
-                new_calendar.unit_list[i]["unit_amval"]=FictionalTime.getUnitAmVal(new_calendar.unit_list[i].unit_name,new_calendar.unit_list);
-            }catch(ex){
-                console.log(ex);
-                errorUnits.push(" unit_name = "+new_calendar.unit_list[i].unit_name);
-            }
-        }
-        console.log("eu.lngth "+errorUnits.length);
-        console.error( "Invalid calendar definition on unit : "+errorUnits.join(","));
-        if(errorUnits.length!=0){throw new Error( "Invalid calendar definition on unit : "+errorUnits.join(","));}
+            for(let u in new_calendar.unit_map){
+                    if(!new_calendar.unit_map.hasOwnProperty(u)){continue;}
+                    let unit =new_calendar.unit_map[u]; 
+                    unit.unit_amval=FictionalTime.getUnitAmVal(unit.unit_name,new_calendar.unit_map);
+                }
+        
+        //放在這邊才不會發生沒有source有但是Actual沒有的狀況，actual有，就要有source，反之亦然。
+        //以避免混淆視聽
+        FictionalTime.Calendars.source[calendar_source.calendar_name]=calendar_source;
         FictionalTime.Calendars.actual[new_calendar.calendar_name]=new_calendar;
+    }
+
+    FictionalTime.createUnitMap=function(unit_list){
+        var unitMap=new Object();
+        for(let i =0;i<unit_list.length;i++){
+            unitMap[unit_list[i].unit_name]=unit_list[i];
+        }
+        return unitMap;
     }
     FictionalTime.Calendars={
         "source" : new Object()
@@ -129,7 +131,12 @@
             console.warn("Some Calendar Definition are invalid , see console for full information");
         }
         console.log("Calendar scan completed. Calendars Registered : ");
-        console.log(FictionalTime.Calendars);
+        let registered = new Array(); 
+        for(let c in FictionalTime.Calendars.actual){
+            if(!FictionalTime.Calendars.actual.hasOwnProperty(c)){continue;}
+            registered.push(FictionalTime.Calendars.actual[c].calendar_name);    
+        }
+        if(registered.length!=0){console.log(registered.join(","));}
     }
     
 
