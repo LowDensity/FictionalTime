@@ -1,34 +1,3 @@
-//設計中的Fictional Time
-
-//prototype for calendar class
-// var time_unit={
-
-//     "second":{
-//         "volume" : 1000,
-//         "volume_type" : "accumulate",
-//         "consist_of": "AM" // AM = Absolute Minimum   
-//     },
-//     "minute":{
-//         "volume" : 60,
-//         "volume_type" : "accumulate",
-//         "consist_of":"second"
-//     },
-//     "hour":{
-//         "volume" :  60 ,
-//         "volume_type" : "accumulate",
-//         "consist_of":"minute",
-//     },
-//     "day":{
-//         "volume" :17,
-//         "volume_type" : "accumulate",
-//         "consist_of" :"hour"
-//     },
-//     "year":{
-//         "volume" :553,
-//         "volume_type" : "periodically",
-//         "consist_of" :"day"
-//     }
-// }
 
 (function(){
     if(typeof(window.FictionalTime)!=="undefined"){return console.log("duplicate initialization");} 
